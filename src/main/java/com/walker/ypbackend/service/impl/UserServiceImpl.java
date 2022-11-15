@@ -1,12 +1,13 @@
 package com.walker.ypbackend.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.DigestUtil;
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.walker.ypbackend.common.ErrorCode;
+import com.walker.ypbackend.common.UserDTO;
 import com.walker.ypbackend.exception.BusinessException;
 import com.walker.ypbackend.model.domain.User;
 import com.walker.ypbackend.service.UserService;
@@ -29,8 +30,7 @@ import static com.walker.ypbackend.constant.UserConstant.USER_LOGIN_STATE;
 * @createDate 2022-11-07 01:54:42
 */
 @Service
-public class UserServiceImpl extends ServiceImpl<UserMapper, User>
-    implements UserService{
+public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService{
 
     @Resource
     private UserMapper userMapper;
@@ -67,7 +67,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
         // 账号不能重复
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("userAccount", userAccount);
+        queryWrapper.eq("user_account", userAccount);
         Long count = userMapper.selectCount(queryWrapper);
         if (count > 0){
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号不能重复");
@@ -77,13 +77,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         //插入数据
         User user = new User();
         user.setUserAccount(userAccount);
-        user.setUserPassword(encryptPassword);
+        user.setPassword(encryptPassword);
         this.save(user);
         return user.getId();
     }
 
+
+    /**
+     * 业务 | 用户登录
+     * @param userAccount 账号
+     * @param userPassword 密码
+     * @param httpServletRequest servlet请求
+     * @return 返回用户
+     */
     @Override
-    public User userLogin(String userAccount, String userPassword, HttpServletRequest httpServletRequest) {
+    public UserDTO userLogin(String userAccount, String userPassword, HttpServletRequest httpServletRequest) {
         //检验是否合法
         if (StrUtil.hasBlank(userAccount, userPassword)){
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
@@ -97,19 +105,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         // 加密
         String encryptPassword = DigestUtil.md5Hex((userPassword + SALT).getBytes(StandardCharsets.UTF_8));
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("userAccount", userAccount);
-        queryWrapper.eq("userPassword", encryptPassword);
+        queryWrapper.eq("user_account", userAccount);
+        queryWrapper.eq("password", encryptPassword);
         if (userMapper.selectCount(queryWrapper) == 0){
             throw new BusinessException(ErrorCode.NULL_ERROR, "账号或密码错误");
         }
         User user = userMapper.selectOne(queryWrapper);
         //用户脱敏
-        User safetyUser = getSafetyUser(user);
-        httpServletRequest.getSession().setAttribute(USER_LOGIN_STATE, safetyUser);
+        UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
+
+        httpServletRequest.getSession().setAttribute(USER_LOGIN_STATE, userDTO);
         //返回脱敏用户
-        return safetyUser;
+        return userDTO;
     }
 
+/*
     public User getSafetyUser(User user){
         User safetyUser = new User();
         safetyUser.setId(user.getId());
@@ -124,6 +134,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         safetyUser.setAvatarUrl(user.getAvatarUrl());
         return safetyUser;
     }
+*/
 
     @Override
     public int userLogOut(HttpServletRequest httpServletRequest) {
@@ -137,7 +148,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
      * @return
      */
     @Override
-    public List<User> searchUsersByTags(List<String> tagNames) {
+    public List<UserDTO> searchUsersByTags(List<String> tagNames) {
         if (CollectionUtil.isEmpty(tagNames)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -149,11 +160,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         }
         List<User> userList = this.list(queryWrapper);
         //lambda表达式
-        return userList.stream().map(this::getSafetyUser).collect(Collectors.toList());
-
+        return userList.stream().map(user -> BeanUtil.copyProperties(user, UserDTO.class)).collect(Collectors.toList());
     }
-
-
 }
 
 

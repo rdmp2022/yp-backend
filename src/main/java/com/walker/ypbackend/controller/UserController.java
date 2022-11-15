@@ -1,10 +1,12 @@
 package com.walker.ypbackend.controller;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.walker.ypbackend.common.BaseResponse;
 import com.walker.ypbackend.common.ErrorCode;
 import com.walker.ypbackend.common.ResultUtils;
+import com.walker.ypbackend.common.UserDTO;
 import com.walker.ypbackend.exception.BusinessException;
 import com.walker.ypbackend.model.domain.User;
 import com.walker.ypbackend.model.request.UserLoginRequest;
@@ -40,14 +42,14 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public BaseResponse<User> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest httpServletRequest){
+    public BaseResponse<UserDTO> userLogin(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest httpServletRequest){
         if (userLoginRequest == null){
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         String userAccount = userLoginRequest.getUserAccount();
         String userPassword = userLoginRequest.getUserPassword();
-        User user = userService.userLogin(userAccount, userPassword, httpServletRequest);
-        return ResultUtils.success(user);
+        UserDTO userDTO = userService.userLogin(userAccount, userPassword, httpServletRequest);
+        return ResultUtils.success(userDTO);
     }
 
     @PostMapping("/logout")
@@ -60,16 +62,16 @@ public class UserController {
     }
 
     @GetMapping("/search")
-    public BaseResponse<List<User>> searchUsers(String username, HttpServletRequest httpServletRequest){
+    public BaseResponse<List<UserDTO>> searchUsers(String username, HttpServletRequest httpServletRequest){
         if (isNotAdmin(httpServletRequest)) throw new BusinessException(ErrorCode.NO_AUTH);
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         if (StrUtil.isNotBlank(username)) {
             queryWrapper.like("username", username);
         }
-        List<User> users = userService
+        List<UserDTO> users = userService
                 .list(queryWrapper)
                 .stream()
-                .map(user -> userService.getSafetyUser(user))
+                .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
                 .collect(Collectors.toList());
         return ResultUtils.success(users);
     }

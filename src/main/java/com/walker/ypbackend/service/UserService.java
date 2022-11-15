@@ -1,9 +1,9 @@
 package com.walker.ypbackend.service;
 
-import com.walker.ypbackend.model.domain.User;
+import com.walker.ypbackend.common.UserDTO;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.walker.ypbackend.model.domain.User;
 
-import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
@@ -30,14 +30,14 @@ public interface UserService extends IService<User> {
      * @param httpServletRequest
      * @return
      */
-    User userLogin(String userAccount, String userPassword, HttpServletRequest httpServletRequest);
+    UserDTO userLogin(String userAccount, String userPassword, HttpServletRequest httpServletRequest);
 
     /**
      * 用户脱敏
      * @param user
      * @return
      */
-    User getSafetyUser(User user);
+//    User getSafetyUser(User user);
 
     /**
      * 用户注销
@@ -51,5 +51,5 @@ public interface UserService extends IService<User> {
      * @param tagNames
      * @return
      */
-    List<User> searchUsersByTags(List<String> tagNames);
+    List<UserDTO> searchUsersByTags(List<String> tagNames);
 }
